@@ -9,9 +9,9 @@ query_args: query+
             | where_arg
             | group_by_arg
   
-select_arg: "SELECT" summary_arg+ -> sel_smry
+select_arg: "SELECT" summary_arg -> sel_smry
             | "SELECT *" -> sel_all
-            | "SELECT" var -> sel_var
+            | "SELECT" var+ -> sel_var
  
 summary_arg: var 
             | "MAX(" var ")" -> mx 
@@ -23,19 +23,19 @@ var:   NAME
 dat: NAME
 dat_name: NAME
  
-from_arg: "FROM" dat ";" 
+from_arg: "FROM" dat 
  
-val: var
-    | NUMBER
+literal: NUMBER
  
-where_arg: "WHERE" expression ";"
-            | "WHERE" bool ";"
+where_arg: "WHERE" expression+
+            | "WHERE" bool+
  
-bool: "(" expression "AND" expression ")" -> and_st
+bool: expression
+        | "(" expression "AND" expression ")" -> and_st
         | "(" expression "OR" expression ")" -> or_st
  
-expression: val
-            | var
+?expression: var
+            | literal
             | expression "=" expression -> eq
             | expression "<>" expression -> neq
             | expression ">" expression -> gth
@@ -43,7 +43,7 @@ expression: val
             | expression "<" expression -> lth
             | expression "<=" expression -> lth_eq
  
-group_by_arg: "GROUP_BY(" var ")"
+group_by_arg: "GROUP_BY" var 
  
 %import common.CNAME -> NAME
 %import common.INT -> NUMBER
@@ -58,47 +58,107 @@ mx_var = ""
 def translate(t):
 
   if t.data == 'query_args':
+    #print(t.children)
     return '\n'.join(map(translate, t.children))
+
   elif t.data == 'sel_all':
     #sel_all = True
-    return
+    #stuff = t.children[0]
+    return "" #translate(stuff)
+
   elif t.data == 'sel_smry':
     #sel_smry = True   # currently can't do summary args and just plain vars, or list of multiple summary args? - ie select max(thing1), min(thing2)
-    return "summarise(" + translate(t.children) + ")"
-  elif t.data == "sel_var":
+    my_args = t.children[0]
+    #print(my_args)
+    return 'summarise(' + translate(my_args) + ')'
+
+  elif t.data == 'sel_var':
     #sel_vars = True
     #selected_vars = t.children
-    return
+    return "select(" + t.children[0] + ")"
+
   elif t.data == 'from_arg':
     #given_dat = t.children
-    return
-  elif t.data == 'val':
-    return
+    #print("in from")
+    print(t.children[0])
+    words = t.children[0]
+    return 'from ' + translate(words)
     #return t.children
+
   elif t.data == 'mx':
     #mx_present = True
     #mx_var = t.children
-    return 
+    return "max(" + translate(t.children[0]) + ")"
+
   elif t.data == 'mn':
     #mn_present = True
     #mn_var = t.children
-    return 
+    return "min(" + translate(t.children[0]) + ")"
+
   elif t.data == 'sm':
     #sm_present = True
     #sm_var = t.children
-    return
+    return "sum(" + translate(t.children[0]) + ")"
+
   elif t.data == 'avge':
     #avge_present = True
     #avge_var = t.children
-    return
-   
-    
-  
+    return "avg(" + translate(t.children[0]) + ")"
 
+  elif t.data == 'where_arg':
+    where_stuff = t.children[0]
+    return 'filter(' + translate(where_stuff) + ')'
+
+  elif t.data == 'literal':
+    return t.children[0]
+
+  elif t.data == 'var':
+    return t.children[0]
+
+  elif t.data == 'dat':
+    return t.children[0]
+
+  elif t.data == 'eq':
+    lhs = t.children[0]
+    rhs = t.children[1]
+    return translate(lhs) + '=' + translate(rhs)        # or is is '=='
+  
+  elif t.data == 'neq':
+    lhs = t.children[0]
+    rhs = t.children[1]
+    return translate(lhs) + '!=' + translate(rhs)
+
+  elif t.data == 'gth':
+    lhs = t.children[0]
+    rhs = t.children[1]
+    return translate(lhs) + '>' + translate(rhs)
+
+  elif t.data == 'gth_eq':
+    lhs = t.children[0]
+    rhs = t.children[1]
+    return translate(lhs) + '>=' + translate(rhs)        
+  
+  elif t.data == 'lth':
+    lhs = t.children[0]
+    rhs = t.children[1]
+    return translate(lhs) + '<' + translate(rhs)
+
+  elif t.data == 'lth_eq':
+    lhs = t.children[0]
+    rhs = t.children[1]
+    return translate(lhs) + '<=' + translate(rhs)
+
+  elif t.data == 'group_by_arg':
+    return "group_by(" + translate(t.children[0]) + ")"
+
+  else:
+    raise SyntaxError("bad tree")
+   
 parser = Lark(my_grammar)
 program = """
-SELECT MAX(candy_eater_id)
+SELECT MAX(this)
 FROM hi
+WHERE x <> y
 """
 parse_tree = parser.parse(program)
 print(translate(parse_tree))
