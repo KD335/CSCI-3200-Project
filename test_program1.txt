@@ -1,0 +1,4 @@
+SELECT *
+FROM hi
+WHERE this > that
+GROUP_BY clique

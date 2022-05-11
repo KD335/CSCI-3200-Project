@@ -1,0 +1,3 @@
+SELECT MAX(stuff)
+FROM hi
+GROUP_BY clique

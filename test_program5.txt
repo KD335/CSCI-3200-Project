@@ -1,0 +1,3 @@
+SELECT stuff
+FROM hi
+WHERE (this > that AND (team > i OR potato = potato))
